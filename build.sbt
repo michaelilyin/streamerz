@@ -1,5 +1,18 @@
 
 
+lazy val stolenLib = project
+  .in(file("modules/xluggle"))
+  .settings(
+    organization              := "xuggle",
+    name                      := "xuggle-xuggler",
+    version                   := "5.4",
+    crossPaths                := false,  //don't add scala version to this artifacts in repo
+    publishMavenStyle         := true,
+    autoScalaLibrary          := false,  //don't attach scala libs as dependencies
+    description               := "project for publishing dependency to maven repo, use 'sbt publishLocal' to install it",
+    packageBin in Compile     := baseDirectory.value / s"${name.value}-${version.value}.jar"
+  )
+
 val commonSettings: Seq[Setting[_]] = Seq(
   organization := "com.jsuereth",
   version := "0.1",
@@ -38,6 +51,7 @@ lazy val webcam =
 
 lazy val examples =
   project.settings(commonSettings:_*).dependsOn(image, ffmpeg, webcam).settings(
+    libraryDependencies += ("ch.qos.logback" % "logback-classic" % "0.9.28"),
     fork in (Compile, run) := true,
     assemblyMergeStrategy in assembly := {
       case PathList("org", "xmlpull", xs @ _*)        => MergeStrategy.first

@@ -25,6 +25,17 @@ object Ascii {
       s"$c$c"
     })
 
+  /** Convert an image to foreground grayscale ascii characters. */
+  def toCharacterGrayscaleAscii(image: BufferedImage): String =
+    toAscii(image, Ansi.FOREGROUND_COLOR_GRAYSCALE, x => chooseAsciiChar(x))
+
+  /** Convert an image to foreground grayscale ascii characters. */
+  def toCharacterGrayscaleAscii2x(image: BufferedImage): String =
+    toAscii(image, Ansi.FOREGROUND_COLOR_GRAYSCALE, { x =>
+      val c = chooseAsciiChar(x)
+      s"$c$c"
+    })
+
   def toMatrixAscii(image: BufferedImage): String =
     toAscii(image, Ansi.FOREGROUND_COLOR, x => chooseAsciiChar(x, matrixPallet))
 

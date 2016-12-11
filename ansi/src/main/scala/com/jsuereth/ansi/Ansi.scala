@@ -61,6 +61,7 @@ object Ansi {
   // as we think this is faster via "felt faster" data.
   private val ANSI_FOREGROUND = "38"
   private val ANSI_BASIC_BASE = 16
+  private val ANSI_BASIC_BASE_GRAYSCALE = 232
   private def toAnsiColorCode(c: Color): Int = {
     val r = toAnsiiSpace(c.getRed)
     val g = toAnsiiSpace(c.getGreen)
@@ -72,9 +73,27 @@ object Ansi {
     else if(code > 255) 255
     else code
   }
+
+  private def toAnsiGrayscaleCode(c: Color): Int = {
+    val r = toAnsiiSpace(c.getRed)
+    val g = toAnsiiSpace(c.getGreen)
+    val b = toAnsiiSpace(c.getBlue)
+    // TODO - Check the code is valid.
+    val code = ANSI_BASIC_BASE_GRAYSCALE + (math.max(r, math.max(g, b)) + math.min(r, math.min(g, b))) / 2
+    if(code < ANSI_BASIC_BASE_GRAYSCALE) ANSI_BASIC_BASE_GRAYSCALE
+    // TODO - what's the max?
+    else if(code > 255) 255
+    else code
+
+  }
   /** Convert a color into the closest possible ANSI equivalent. */
   def FOREGROUND_COLOR(c: Color): String = {
     s"${CSI}${ANSI_FOREGROUND};5;${toAnsiColorCode(c)}m"
+  }
+
+  /** Convert a color into the closest possible ANSI grayscale equivalent. */
+  def FOREGROUND_COLOR_GRAYSCALE(c: Color): String = {
+    s"${CSI}${ANSI_FOREGROUND};5;${toAnsiGrayscaleCode(c)}m"
   }
 
   private val ANSI_BACKGROUND = "48"

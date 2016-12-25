@@ -9,8 +9,8 @@ import com.jsuereth.video.FilterChain.Filter
 /**
   * Created by michael on 18.12.16.
   */
-object OutputFilters {
-  val hFlipFilter: Filter = {
+object HorizontalFlipFilter {
+  val filter: Filter = {
     Flow[VideoFrame].map(frame => VideoFrame(createFlipped(frame.image), frame.timeStamp, frame.timeUnit))
   }
 

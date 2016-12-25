@@ -18,6 +18,8 @@ object AsciiVideo {
   val bwAscii = asciiConversion(Ascii.toRawAscii)
   /** Converts a video into colored character ascii. */
   val colorAscii = asciiConversion(Ascii.toCharacterColoredAscii)
+  /** Converts a video into grayscale character ascii. */
+  val greyscaleAscii = asciiConversion(Ascii.toCharacterGrayscaleAscii2x)
 
   val matrixAscii = asciiConversion(Ascii.toMatrixAscii)
 

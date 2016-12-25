@@ -13,7 +13,8 @@ object VideoPlayer {
     val url = "file:///Users/pimverkerk/Downloads/small.mp4"
     implicit val system = ActorSystem()
     val settings = ActorMaterializerSettings.create(system)
-    def video() = com.jsuereth.video.ffmpeg.readVideoURI(new java.net.URI(url), system, playAudio = true)
-    swing.createVideoPlayer(system, video)
+//    def video() = com.jsuereth.video.ffmpeg.readVideoURI(new java.net.URI(url), system, playAudio = true)
+    def video() = com.jsuereth.video.WebCam.default(system)
+    swing.createVideoPlayer(system, video)()
   }
 }

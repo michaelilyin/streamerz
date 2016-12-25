@@ -36,7 +36,10 @@ lazy val image =
   project.settings(commonSettings:_*).dependsOn(ansi)
 
 lazy val video =
-  project.settings(commonSettings:_*).dependsOn(image, ansi).settings(libraryDependencies += Deps.akkaStreams)
+  project.settings(commonSettings:_*).dependsOn(image, ansi).settings(
+    libraryDependencies += Deps.akkaStreams,
+    libraryDependencies += Deps.logging
+  )
 
 lazy val ffmpeg =
   project.settings(commonSettings:_*).settings(

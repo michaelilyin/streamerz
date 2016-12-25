@@ -1,10 +1,12 @@
 package com.jsuereth.video
 
-import java.awt.event.{WindowEvent, WindowAdapter}
-import java.awt.{GridLayout, Component}
-import javax.swing.{JFrame, JComponent}
+import java.awt.event.{WindowAdapter, WindowEvent}
+import java.awt.{Component, GridLayout}
+import java.util.Optional
+import javax.swing.{JComponent, JFrame}
 
 import akka.actor.{ActorRef, ActorSystem}
+import akka.stream.scaladsl.Flow
 import org.reactivestreams.{Publisher, Subscriber}
 
 /**
@@ -35,11 +37,15 @@ package object swing {
   }
 
   /** Creates a video player that can play/pause a single stream of video. */
-  def createVideoPlayer(system: ActorSystem, openFile: () => Publisher[VideoFrame], width: Int = 640, height: Int = 480): Unit = {
+  def createVideoPlayer(system: ActorSystem,
+                        openFile: () => Publisher[VideoFrame],
+                        width: Int = 640, height: Int = 480
+                       )(implicit filters: Flow[VideoFrame, VideoFrame, Unit]*): Unit = {
     val (videoSink, uiSource) = createRawVideoPlayer(system, width, height)
     val (uiSink, videoSource) = PlayerProcessor.create(system, openFile)
     uiSource.subscribe(uiSink)
-    videoSource.subscribe(videoSink)
+    val filterChain = FilterChain(system, videoSource, videoSink)(filters:_*)
+//    videoSource.subscribe(videoSink)
   }
 
 

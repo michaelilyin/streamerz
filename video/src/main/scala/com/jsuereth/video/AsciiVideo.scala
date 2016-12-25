@@ -19,6 +19,8 @@ object AsciiVideo {
   /** Converts a video into colored character ascii. */
   val colorAscii = asciiConversion(Ascii.toCharacterColoredAscii)
 
+  val matrixAscii = asciiConversion(Ascii.toMatrixAscii)
+
 
   def asciiConversion(asciifier: BufferedImage => String, maxWidth: Int = 80, maxHeight: Int = 40): Flow[VideoFrame, AsciiVideoFrame, Unit] = {
     Flow[VideoFrame].map { frame =>

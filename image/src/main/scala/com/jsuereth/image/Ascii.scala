@@ -25,6 +25,9 @@ object Ascii {
       s"$c$c"
     })
 
+  def toMatrixAscii(image: BufferedImage): String =
+    toAscii(image, Ansi.FOREGROUND_COLOR, x => chooseAsciiChar(x, matrixPallet))
+
   /** Converts an image to raw ascii characters (no color) by intensity. */
   def toRawAscii(image: BufferedImage): String =
     toAscii(image, _ => "", x => chooseAsciiChar(x))
@@ -40,6 +43,7 @@ object Ascii {
   // Convert color magnitude into a character.   This has been adapted for dark-background terminals, which a lot of us use
   // by default (just by reversing the list).
   val darkBackgroundIntensityPallet = Array('#','#','A','A','@','%','$','+','=','*',':',',','.',' ').reverse
+  val matrixPallet = Array('ﾎ','ｻ','ﾀ','ｾ','ﾋ','ｸ','ｲ','ｭ','ﾉ','ｨ','｢','｡','･',' ').reverse
 
 
 

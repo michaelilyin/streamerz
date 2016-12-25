@@ -11,8 +11,6 @@ import org.reactivestreams.{Publisher, Subscriber}
   * Created by michael on 18.12.16.
   */
 object FilterChain {
-  type Filter = Flow[VideoFrame, VideoFrame, Unit]
-
   def apply(system: ActorSystem,
             videoSource: Publisher[VideoFrame],
             videoReceiver: Subscriber[VideoFrame])

@@ -2,7 +2,7 @@ package examples
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializerSettings
-import com.jsuereth.video.{OutputFilters, swing}
+import com.jsuereth.video.{HorizontalFlipFilter, swing}
 
 
 object WebcamPlayer {
@@ -13,7 +13,7 @@ object WebcamPlayer {
 
     import com.jsuereth.video.AsciiToVideo.asciiToVideo
     swing.createVideoPlayer(system, video)(
-      OutputFilters.hFlipFilter,
+      HorizontalFlipFilter.filter,
       com.jsuereth.video.AsciiVideo.colorAscii
     )
   }

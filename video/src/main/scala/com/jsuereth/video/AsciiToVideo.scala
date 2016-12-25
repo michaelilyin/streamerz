@@ -1,317 +1,86 @@
 package com.jsuereth.video
 
-import java.awt.{Color, Font}
+import java.awt.Font
 import java.awt.image.BufferedImage
 
 import akka.stream.scaladsl.Flow
-
-import scala.collection.mutable.ArrayBuffer
+import com.jsuereth.ansi.AnsiColors
 
 object AsciiToVideo {
 
   implicit def asciiToVideo(asciiFlow: Flow[VideoFrame, AsciiVideoFrame, Unit]): Flow[VideoFrame, VideoFrame, Unit] = {
-    asciiFlow.map(avf => {
-      try {
-        VideoFrame(renderAsciiToImage(avf.image), avf.timeStamp, avf.timeUnit)
-      } catch {
-        case e: Exception =>
-          println(e.getMessage)
-          VideoFrame(new BufferedImage(100, 100, BufferedImage.TYPE_INT_RGB), avf.timeStamp, avf.timeUnit)
-      }
-    })
+    asciiFlow map {
+      avf => convert(avf)
+    }
+  }
+
+  private def convert(avf: AsciiVideoFrame) = {
+    try {
+      VideoFrame(renderAsciiToImage(avf.image), avf.timeStamp, avf.timeUnit)
+    } catch {
+      case e: Exception =>
+        println(e.getMessage)
+        VideoFrame(new BufferedImage(100, 100, BufferedImage.TYPE_INT_RGB), avf.timeStamp, avf.timeUnit)
+    }
   }
 
   private val letterWidth = 10
   private val letterHeight = 10
 
-  def renderAsciiToImage(image: String): BufferedImage = {
-    var currentX = 0
-    var currentY = 0
+  private val font = new Font("monospaced", Font.PLAIN, (letterHeight * 1.6).toInt)
+  private val colorGroupStartPattern = 27.toChar + "\\["
 
-    val lines = image.split("\n")
+  def renderAsciiToImage(image: String): BufferedImage = {
+    val lines = image split "\n"
+    val (height, width) = getDimensions(lines)
+
     val picture = new BufferedImage(
-      80 * letterWidth,
-      40 * letterHeight,
+      width * letterWidth,
+      height * letterHeight,
       BufferedImage.TYPE_INT_RGB
     )
     val graphics = picture.getGraphics
-    graphics.setFont(new Font("monospaced", Font.PLAIN, (letterHeight * 1.6).toInt))
-    for (line <- lines) {
-      val colorGroups = line.split(27.toChar + "\\[")
-      for (colorGroup <- colorGroups) {
-        if (!colorGroup.isEmpty) {
-          val fbFlag = colorGroup.take(2)
-          val ansiColor = Integer.parseInt(colorGroup.drop(colorGroup lastIndexOf ";").takeWhile(_ != 'm').drop(1))
-          val text = colorGroup.dropWhile(_ != 'm').drop(1)
-          graphics.setColor(AnsiColors.colors(ansiColor))
-          graphics.drawString(text, currentX, currentY)
-          currentX += letterWidth * text.length
+    graphics setFont font
+
+    (lines foldLeft 0) {
+      (offsetY, line) => {
+        val colorGroups = line split colorGroupStartPattern
+        (colorGroups foldLeft 0) {
+          (offsetX, colorGroup) => {
+            if (!colorGroup.isEmpty) {
+              val (fbFlag, ansiColor, text) = parseColorGroup(colorGroup)
+              graphics setColor AnsiColors(ansiColor)
+              graphics drawString(text, offsetX, offsetY)
+              offsetX +letterWidth * text.length
+            } else {
+              offsetX
+            }
+          }
         }
+        offsetY + letterHeight
       }
-      currentY += letterHeight
-      currentX = 0
     }
+
     picture
   }
 
-}
+  private def getDimensions(lines: Array[String]): (Int, Int) = {
+    val firstLine = lines(0) split colorGroupStartPattern
+    val firstLineChars = firstLine map {
+      group => {
+        group dropWhile (_ != 'm') drop 1
+      }
+    } flatMap (_.toCharArray)
 
-object AnsiColors {
-  val colors = new Array[Color](256)
-  colors(0) = new Color(0x000000)
-  colors(1) = new Color(0x800000)
-  colors(2) = new Color(0x008000)
-  colors(3) = new Color(0x808000)
-  colors(4) = new Color(0x000080)
-  colors(5) = new Color(0x800080)
-  colors(6) = new Color(0x008080)
-  colors(7) = new Color(0xc0c0c0)
-  colors(8) = new Color(0x808080)
-  colors(9) = new Color(0xff0000)
-  colors(10) = new Color(0x00ff00)
-  colors(11) = new Color(0xffff00)
-  colors(12) = new Color(0x0000ff)
-  colors(13) = new Color(0xff00ff)
-  colors(14) = new Color(0x00ffff)
-  colors(15) = new Color(0xffffff)
-  colors(16) = new Color(0x000000)
-  colors(17) = new Color(0x00005f)
-  colors(18) = new Color(0x000087)
-  colors(19) = new Color(0x0000af)
-  colors(20) = new Color(0x0000d7)
-  colors(21) = new Color(0x0000ff)
-  colors(22) = new Color(0x005f00)
-  colors(23) = new Color(0x005f5f)
-  colors(24) = new Color(0x005f87)
-  colors(25) = new Color(0x005faf)
-  colors(26) = new Color(0x005fd7)
-  colors(27) = new Color(0x005fff)
-  colors(28) = new Color(0x008700)
-  colors(29) = new Color(0x00875f)
-  colors(30) = new Color(0x008787)
-  colors(31) = new Color(0x0087af)
-  colors(32) = new Color(0x0087d7)
-  colors(33) = new Color(0x0087ff)
-  colors(34) = new Color(0x00af00)
-  colors(35) = new Color(0x00af5f)
-  colors(36) = new Color(0x00af87)
-  colors(37) = new Color(0x00afaf)
-  colors(38) = new Color(0x00afd7)
-  colors(39) = new Color(0x00afff)
-  colors(40) = new Color(0x00d700)
-  colors(41) = new Color(0x00d75f)
-  colors(42) = new Color(0x00d787)
-  colors(43) = new Color(0x00d7af)
-  colors(44) = new Color(0x00d7d7)
-  colors(45) = new Color(0x00d7ff)
-  colors(46) = new Color(0x00ff00)
-  colors(47) = new Color(0x00ff5f)
-  colors(48) = new Color(0x00ff87)
-  colors(49) = new Color(0x00ffaf)
-  colors(50) = new Color(0x00ffd7)
-  colors(51) = new Color(0x00ffff)
-  colors(52) = new Color(0x5f0000)
-  colors(53) = new Color(0x5f005f)
-  colors(54) = new Color(0x5f0087)
-  colors(55) = new Color(0x5f00af)
-  colors(56) = new Color(0x5f00d7)
-  colors(57) = new Color(0x5f00ff)
-  colors(58) = new Color(0x5f5f00)
-  colors(59) = new Color(0x5f5f5f)
-  colors(60) = new Color(0x5f5f87)
-  colors(61) = new Color(0x5f5faf)
-  colors(62) = new Color(0x5f5fd7)
-  colors(63) = new Color(0x5f5fff)
-  colors(64) = new Color(0x5f8700)
-  colors(65) = new Color(0x5f875f)
-  colors(66) = new Color(0x5f8787)
-  colors(67) = new Color(0x5f87af)
-  colors(68) = new Color(0x5f87d7)
-  colors(69) = new Color(0x5f87ff)
-  colors(70) = new Color(0x5faf00)
-  colors(71) = new Color(0x5faf5f)
-  colors(72) = new Color(0x5faf87)
-  colors(73) = new Color(0x5fafaf)
-  colors(74) = new Color(0x5fafd7)
-  colors(75) = new Color(0x5fafff)
-  colors(76) = new Color(0x5fd700)
-  colors(77) = new Color(0x5fd75f)
-  colors(78) = new Color(0x5fd787)
-  colors(79) = new Color(0x5fd7af)
-  colors(80) = new Color(0x5fd7d7)
-  colors(81) = new Color(0x5fd7ff)
-  colors(82) = new Color(0x5fff00)
-  colors(83) = new Color(0x5fff5f)
-  colors(84) = new Color(0x5fff87)
-  colors(85) = new Color(0x5fffaf)
-  colors(86) = new Color(0x5fffd7)
-  colors(87) = new Color(0x5fffff)
-  colors(88) = new Color(0x870000)
-  colors(89) = new Color(0x87005f)
-  colors(90) = new Color(0x870087)
-  colors(91) = new Color(0x8700af)
-  colors(92) = new Color(0x8700d7)
-  colors(93) = new Color(0x8700ff)
-  colors(94) = new Color(0x875f00)
-  colors(95) = new Color(0x875f5f)
-  colors(96) = new Color(0x875f87)
-  colors(97) = new Color(0x875faf)
-  colors(98) = new Color(0x875fd7)
-  colors(99) = new Color(0x875fff)
-  colors(100) = new Color(0x878700)
-  colors(101) = new Color(0x87875f)
-  colors(102) = new Color(0x878787)
-  colors(103) = new Color(0x8787af)
-  colors(104) = new Color(0x8787d7)
-  colors(105) = new Color(0x8787ff)
-  colors(106) = new Color(0x87af00)
-  colors(107) = new Color(0x87af5f)
-  colors(108) = new Color(0x87af87)
-  colors(109) = new Color(0x87afaf)
-  colors(110) = new Color(0x87afd7)
-  colors(111) = new Color(0x87afff)
-  colors(112) = new Color(0x87d700)
-  colors(113) = new Color(0x87d75f)
-  colors(114) = new Color(0x87d787)
-  colors(115) = new Color(0x87d7af)
-  colors(116) = new Color(0x87d7d7)
-  colors(117) = new Color(0x87d7ff)
-  colors(118) = new Color(0x87ff00)
-  colors(119) = new Color(0x87ff5f)
-  colors(120) = new Color(0x87ff87)
-  colors(121) = new Color(0x87ffaf)
-  colors(122) = new Color(0x87ffd7)
-  colors(123) = new Color(0x87ffff)
-  colors(124) = new Color(0xaf0000)
-  colors(125) = new Color(0xaf005f)
-  colors(126) = new Color(0xaf0087)
-  colors(127) = new Color(0xaf00af)
-  colors(128) = new Color(0xaf00d7)
-  colors(129) = new Color(0xaf00ff)
-  colors(130) = new Color(0xaf5f00)
-  colors(131) = new Color(0xaf5f5f)
-  colors(132) = new Color(0xaf5f87)
-  colors(133) = new Color(0xaf5faf)
-  colors(134) = new Color(0xaf5fd7)
-  colors(135) = new Color(0xaf5fff)
-  colors(136) = new Color(0xaf8700)
-  colors(137) = new Color(0xaf875f)
-  colors(138) = new Color(0xaf8787)
-  colors(139) = new Color(0xaf87af)
-  colors(140) = new Color(0xaf87d7)
-  colors(141) = new Color(0xaf87ff)
-  colors(142) = new Color(0xafaf00)
-  colors(143) = new Color(0xafaf5f)
-  colors(144) = new Color(0xafaf87)
-  colors(145) = new Color(0xafafaf)
-  colors(146) = new Color(0xafafd7)
-  colors(147) = new Color(0xafafff)
-  colors(148) = new Color(0xafd700)
-  colors(149) = new Color(0xafd75f)
-  colors(150) = new Color(0xafd787)
-  colors(151) = new Color(0xafd7af)
-  colors(152) = new Color(0xafd7d7)
-  colors(153) = new Color(0xafd7ff)
-  colors(154) = new Color(0xafff00)
-  colors(155) = new Color(0xafff5f)
-  colors(156) = new Color(0xafff87)
-  colors(157) = new Color(0xafffaf)
-  colors(158) = new Color(0xafffd7)
-  colors(159) = new Color(0xafffff)
-  colors(160) = new Color(0xd70000)
-  colors(161) = new Color(0xd7005f)
-  colors(162) = new Color(0xd70087)
-  colors(163) = new Color(0xd700af)
-  colors(164) = new Color(0xd700d7)
-  colors(165) = new Color(0xd700ff)
-  colors(166) = new Color(0xd75f00)
-  colors(167) = new Color(0xd75f5f)
-  colors(168) = new Color(0xd75f87)
-  colors(169) = new Color(0xd75faf)
-  colors(170) = new Color(0xd75fd7)
-  colors(171) = new Color(0xd75fff)
-  colors(172) = new Color(0xd78700)
-  colors(173) = new Color(0xd7875f)
-  colors(174) = new Color(0xd78787)
-  colors(175) = new Color(0xd787af)
-  colors(176) = new Color(0xd787d7)
-  colors(177) = new Color(0xd787ff)
-  colors(178) = new Color(0xd7af00)
-  colors(179) = new Color(0xd7af5f)
-  colors(180) = new Color(0xd7af87)
-  colors(181) = new Color(0xd7afaf)
-  colors(182) = new Color(0xd7afd7)
-  colors(183) = new Color(0xd7afff)
-  colors(184) = new Color(0xd7d700)
-  colors(185) = new Color(0xd7d75f)
-  colors(186) = new Color(0xd7d787)
-  colors(187) = new Color(0xd7d7af)
-  colors(188) = new Color(0xd7d7d7)
-  colors(189) = new Color(0xd7d7ff)
-  colors(190) = new Color(0xd7ff00)
-  colors(191) = new Color(0xd7ff5f)
-  colors(192) = new Color(0xd7ff87)
-  colors(193) = new Color(0xd7ffaf)
-  colors(194) = new Color(0xd7ffd7)
-  colors(195) = new Color(0xd7ffff)
-  colors(196) = new Color(0xff0000)
-  colors(197) = new Color(0xff005f)
-  colors(198) = new Color(0xff0087)
-  colors(199) = new Color(0xff00af)
-  colors(200) = new Color(0xff00d7)
-  colors(201) = new Color(0xff00ff)
-  colors(202) = new Color(0xff5f00)
-  colors(203) = new Color(0xff5f5f)
-  colors(204) = new Color(0xff5f87)
-  colors(205) = new Color(0xff5faf)
-  colors(206) = new Color(0xff5fd7)
-  colors(207) = new Color(0xff5fff)
-  colors(208) = new Color(0xff8700)
-  colors(209) = new Color(0xff875f)
-  colors(210) = new Color(0xff8787)
-  colors(211) = new Color(0xff87af)
-  colors(212) = new Color(0xff87d7)
-  colors(213) = new Color(0xff87ff)
-  colors(214) = new Color(0xffaf00)
-  colors(215) = new Color(0xffaf5f)
-  colors(216) = new Color(0xffaf87)
-  colors(217) = new Color(0xffafaf)
-  colors(218) = new Color(0xffafd7)
-  colors(219) = new Color(0xffafff)
-  colors(220) = new Color(0xffd700)
-  colors(221) = new Color(0xffd75f)
-  colors(222) = new Color(0xffd787)
-  colors(223) = new Color(0xffd7af)
-  colors(224) = new Color(0xffd7d7)
-  colors(225) = new Color(0xffd7ff)
-  colors(226) = new Color(0xffff00)
-  colors(227) = new Color(0xffff5f)
-  colors(228) = new Color(0xffff87)
-  colors(229) = new Color(0xffffaf)
-  colors(230) = new Color(0xffffd7)
-  colors(231) = new Color(0xffffff)
-  colors(232) = new Color(0x080808)
-  colors(233) = new Color(0x121212)
-  colors(234) = new Color(0x1c1c1c)
-  colors(235) = new Color(0x262626)
-  colors(236) = new Color(0x303030)
-  colors(237) = new Color(0x3a3a3a)
-  colors(238) = new Color(0x444444)
-  colors(239) = new Color(0x4e4e4e)
-  colors(240) = new Color(0x585858)
-  colors(241) = new Color(0x626262)
-  colors(242) = new Color(0x6c6c6c)
-  colors(243) = new Color(0x767676)
-  colors(244) = new Color(0x808080)
-  colors(245) = new Color(0x8a8a8a)
-  colors(246) = new Color(0x949494)
-  colors(247) = new Color(0x9e9e9e)
-  colors(248) = new Color(0xa8a8a8)
-  colors(249) = new Color(0xb2b2b2)
-  colors(250) = new Color(0xbcbcbc)
-  colors(251) = new Color(0xc6c6c6)
-  colors(252) = new Color(0xd0d0d0)
-  colors(253) = new Color(0xdadada)
-  colors(254) = new Color(0xe4e4e4)
-  colors(255) = new Color(0xeeeeee)
+    (lines.length, firstLineChars.length)
+  }
+
+  private def parseColorGroup(colorGroup: String): (String, Int, String) = {
+    (
+      colorGroup take 2,
+      Integer parseInt (colorGroup drop (colorGroup lastIndexOf ";") takeWhile (_ != 'm') drop 1),
+      colorGroup dropWhile (_ != 'm') drop 1
+    )
+  }
+
 }

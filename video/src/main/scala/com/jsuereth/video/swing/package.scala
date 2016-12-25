@@ -45,7 +45,7 @@ package object swing {
     val (uiSink, videoSource) = PlayerProcessor.create(system, openFile)
     uiSource.subscribe(uiSink)
     val filterChain = FilterChain(system, videoSource, videoSink)(filters:_*)
-//    videoSource.subscribe(videoSink)
+    filterChain.run()
   }
 
 

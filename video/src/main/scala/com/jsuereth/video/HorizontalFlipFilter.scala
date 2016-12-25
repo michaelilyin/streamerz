@@ -4,7 +4,6 @@ import java.awt.geom.AffineTransform
 import java.awt.image.BufferedImage
 
 import akka.stream.scaladsl.Flow
-import com.jsuereth.video.FilterChain.Filter
 
 /**
   * Created by michael on 18.12.16.

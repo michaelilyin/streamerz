@@ -1,10 +1,8 @@
 package com.jsuereth.video
 
 import akka.actor.ActorSystem
-import akka.stream.{ActorMaterializer, ActorMaterializerSettings, Graph}
-import akka.stream.actor.ActorSubscriber
-import akka.stream.scaladsl.{Flow, RunnableGraph, Sink, Source}
-import com.jsuereth.video.FilterChain.Filter
+import akka.stream.scaladsl.{Sink, Source}
+import akka.stream.{ActorMaterializer, ActorMaterializerSettings}
 import org.reactivestreams.{Publisher, Subscriber}
 
 /**
@@ -23,14 +21,18 @@ class FilterChain(system: ActorSystem,
                   videoSource: Publisher[VideoFrame],
                   videoReceiver: Subscriber[VideoFrame],
                   filters: Filter*) {
-  if (filters.isEmpty) {
-    videoSource subscribe videoReceiver
-  } else {
-    val filter = filters.reverse reduce { (result, filter) => filter via result }
-    val sink = Sink(videoReceiver)
-    val source = Source(videoSource)
-    implicit val factory = system
-    implicit val materializer = ActorMaterializer(ActorMaterializerSettings create factory)
-    filter to sink runWith source
+
+  private implicit val factory = system
+  private implicit val materializer = ActorMaterializer(ActorMaterializerSettings create factory)
+
+  def run(): Unit = {
+    if (filters.isEmpty) {
+      videoSource subscribe videoReceiver
+    } else {
+      val filter = filters.reverse reduce { (result, filter) => filter via result }
+      val sink = Sink(videoReceiver)
+      val source = Source(videoSource)
+      filter to sink runWith source
+    }
   }
 }

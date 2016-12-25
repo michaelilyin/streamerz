@@ -2,7 +2,8 @@ package examples
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializerSettings
-import com.jsuereth.video.{HorizontalFlipFilter, swing}
+import com.jsuereth.video.filters.HorizontalFlipFilter
+import com.jsuereth.video.swing
 
 
 object WebcamPlayer {

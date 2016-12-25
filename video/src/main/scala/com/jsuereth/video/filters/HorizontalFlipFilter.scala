@@ -1,9 +1,10 @@
-package com.jsuereth.video
+package com.jsuereth.video.filters
 
 import java.awt.geom.AffineTransform
 import java.awt.image.BufferedImage
 
 import akka.stream.scaladsl.Flow
+import com.jsuereth.video._
 
 /**
   * Created by michael on 18.12.16.

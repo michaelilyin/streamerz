@@ -14,6 +14,9 @@ object HorizontalFlipFilter {
     Flow[VideoFrame].map(frame => VideoFrame(createFlipped(frame.image), frame.timeStamp, frame.timeUnit))
   }
 
+  FiltersRegistry.register("horizontal-flip-filter", "Horizontal flip filter",
+    "Flip image in horizontal axis", filter)
+
   private def createFlipped(image: BufferedImage): BufferedImage = {
     val at = new AffineTransform()
     at.concatenate(AffineTransform.getScaleInstance(-1, 1))

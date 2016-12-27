@@ -66,6 +66,6 @@ object PlayerControls  {
   def apply(factory: ActorRefFactory): (Publisher[UIControl], JComponent) = {
     val actorRef = factory.actorOf(Props[PlayerControlsActor].withDispatcher("swing-dispatcher"), "video-controls")
     val component = new PlayerControls(actorRef)
-    ActorPublisher(actorRef) -> component
+    ActorPublisher[UIControl](actorRef) -> component
   }
 }

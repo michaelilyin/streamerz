@@ -2,12 +2,14 @@ package com.jsuereth.video
 package swing
 
 
-
-import akka.actor.{ActorSystem, Props, ActorRef}
+import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.stream.actor._
-import org.reactivestreams.{Subscriber, Publisher}
+import com.typesafe.scalalogging.Logger
+import org.reactivestreams.{Publisher, Subscriber}
+import org.slf4j.LoggerFactory
 
 case class PlayerRequestMore(elements: Long)
+
 case object PlayerDone
 
 
@@ -15,18 +17,23 @@ case object PlayerDone
 object PlayerProcessor {
   /** Creates a new processor which can handle incoming UIControls and output VideoFrames. */
   def create(system: ActorSystem, openVideo: () => Publisher[VideoFrame]): (Subscriber[UIControl], Publisher[VideoFrame]) = {
-    val playEngineActor = system.actorOf(Props(new PlayerProcessorActor(openVideo)))
+    val playEngineActor = system.actorOf(Props(new PlayerProcessorActor(system, openVideo)))
     val playEngineConsumer = ActorSubscriber[UIControl](playEngineActor)
     val playEngineProducer = ActorPublisher[VideoFrame](playEngineActor)
     (playEngineConsumer, playEngineProducer)
   }
 }
+
 /** An actor which is responsible for taking Play/Pause/Stop requests and adjusting
-  *  the output frame stream accordingly.
+  * the output frame stream accordingly.
   *
-  *  This player
+  * This player
   */
-class PlayerProcessorActor(openVideo: () => Publisher[VideoFrame]) extends ActorPublisher[VideoFrame] with ActorSubscriber /*[UIControl]*/ {
+class PlayerProcessorActor(system: ActorSystem, openVideo: () => Publisher[VideoFrame])
+  extends ActorPublisher[VideoFrame] with ActorSubscriber /*[UIControl]*/ {
+
+  private val logger = Logger(LoggerFactory.getLogger(classOf[PlayerProcessorActor]))
+
   // Ensure that we only ask for UI events one at a time.
   override val requestStrategy = OneByOneRequestStrategy
   // Private data, holding which actor is currently acting as a Consumer[Frame] for us.
@@ -49,17 +56,26 @@ class PlayerProcessorActor(openVideo: () => Publisher[VideoFrame]) extends Actor
       //     Stop  -  We need to cancel the currentPlayer and update our state.
       control match {
         case Play =>
+          logger info "Play"
           // Update state and kick off the stream
-          if(currentPlayer.isEmpty) kickOffFileProducer()
+          if (currentPlayer.isEmpty) kickOffFileProducer()
           isPaused = false
           // TODO - If we have pause cache, we should fire those events.
           requestMorePlayer()
         case Pause =>
+          logger info "Pause"
           isPaused = true
         case Stop =>
+          logger info "Stop"
           isPaused = false
           currentPlayer.foreach(_ ! Stop)
           currentPlayer = None
+        case filter: ApplyFilter =>
+          logger info s"Apply filter $filter"
+          applyFilter(filter.filterChain)
+        case ClearFilter =>
+          logger info "Clear filter"
+          applyFilter(new FilterChain())
       }
     case ActorPublisherMessage.Request(elements) =>
       // EXERCISE - Implement handling of request for more elements.
@@ -69,8 +85,8 @@ class PlayerProcessorActor(openVideo: () => Publisher[VideoFrame]) extends Actor
       //  Hint:  The key to backpressure in reactive streams is that we cannot send any frames
       //           until after this message is received.
       //  Hint2:  If you're running out of memory, remember to flush any buffers you might have.
-      if(!isPaused) {
-        if(tryEmptyBuffer()) requestMorePlayer()
+      if (!isPaused) {
+        if (tryEmptyBuffer()) requestMorePlayer()
       }
     case PlayerDone =>
       // EXERCISE - Implement what to do when the file is complete.
@@ -86,54 +102,71 @@ class PlayerProcessorActor(openVideo: () => Publisher[VideoFrame]) extends Actor
       //            Hint:  Look at the totalDemand member of ActorProducer trait.
       //            Hint2:  If you see runtime errors, make sure you're only pushing data after
       //                    the consumer has asked for it.  Also, check out the private `buffer` methods.
-      if(totalDemand > 0) onNext(f)
+      if (totalDemand > 0) onNext(f)
       else buffer(f)
   }
 
-
-
-
+  private def applyFilter(chain: FilterChain): Unit = {
+    tryEmptyBuffer()
+    currentPlayer foreach (_ ! Stop)
+    currentPlayer foreach (_ ! ActorSubscriberMessage.OnComplete)
+    currentPlayer = None
+    kickOffFileProducer(chain.run(system))
+    requestMorePlayer()
+  }
 
   // Buffering (unbounded) if we get overloaded on input frames.
   private val buf = collection.mutable.ArrayBuffer.empty[VideoFrame]
+
   /** Buffers the given frame to be pushed to future clients later. */
   private def buffer(f: VideoFrame): Unit = buf.append(f)
+
   /** Attempts to empty the buffer of frames we couldn't yet send, if there is
-    *  demand from consumers.   Returns true if the entire buffer was emptied, false otherwise.
+    * demand from consumers.   Returns true if the entire buffer was emptied, false otherwise.
     */
   private def tryEmptyBuffer(): Boolean = {
-    while(!buf.isEmpty && totalDemand > 0)
+    while (!buf.isEmpty && totalDemand > 0)
       onNext(buf.remove(0))
     buf.isEmpty
   }
+
   /** Creates a new `Producer[Frame]` for the underlying file, and feeds its `Frame` output
-    *  to ourselves as raw `Frame` messages
+    * to ourselves as raw `Frame` messages
     */
-  private def kickOffFileProducer(): Unit = {
+  private def kickOffFileProducer(subscription: (Publisher[VideoFrame], Subscriber[VideoFrame]) => Unit
+                                  = justSubscribe): Unit = {
     val producer = openVideo()
     val consumerRef = context.actorOf(Props(new PlayerActor(self)))
     currentPlayer = Some(consumerRef)
-    producer subscribe ActorSubscriber(consumerRef)
+    subscription(producer, ActorSubscriber(consumerRef))
   }
+
+  private def justSubscribe(pub: Publisher[VideoFrame], subs: Subscriber[VideoFrame]): Unit = {
+    pub subscribe subs
+  }
+
   /** Request as much data from the underlying Producer[Frame] as our client consumers
-    *  have requests from us.
+    * have requests from us.
     */
   private def requestMorePlayer(): Unit = {
-    if(totalDemand > 0) currentPlayer match {
+    if (totalDemand > 0) currentPlayer match {
       case Some(player) => player ! PlayerRequestMore(totalDemand)
       case None => ()
     }
   }
 }
+
 /** A helper actor which forwards requests from the file-reading consumer back to
-  *  the main controlling actor.
+  * the main controlling actor.
   *
-  *  This just forwards `Frame` and `PlayerDone` messages to the main actor.  In addition,
-  *  any `PlayerRequestMore` messages are delegated down as actual akka stream `requestMore` calls.
+  * This just forwards `Frame` and `PlayerDone` messages to the main actor.  In addition,
+  * any `PlayerRequestMore` messages are delegated down as actual akka stream `requestMore` calls.
   */
 class PlayerActor(consumer: ActorRef) extends ActorSubscriber {
+  private val logger = Logger(LoggerFactory.getLogger(classOf[PlayerActor]))
   // All requests for more data handled by our 'consumer' actor.
   override val requestStrategy = ZeroRequestStrategy
+
   override def receive: Receive = {
     // Just delegate back/forth with the controlling 'consumer' actor.
     case ActorSubscriberMessage.OnNext(frame: VideoFrame) =>
@@ -141,6 +174,7 @@ class PlayerActor(consumer: ActorRef) extends ActorSubscriber {
     case PlayerRequestMore(e) => request(e)
     case Stop => cancel()
     case ActorSubscriberMessage.OnComplete =>
+      logger info "On complete"
       consumer ! PlayerDone
   }
 }

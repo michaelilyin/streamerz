@@ -14,8 +14,7 @@ object WebcamPlayer {
 
     import com.jsuereth.video.AsciiToVideo.asciiToVideo
     swing.createVideoPlayer(system, video)(
-      HorizontalFlipFilter.filter,
-      com.jsuereth.video.AsciiVideo.colorAscii
+
     )
   }
 }

@@ -8,7 +8,8 @@ import java.awt.event.{WindowAdapter, WindowEvent}
 
 
 /** Widget which wraps another component, and exposes play/pause/stop buttons. */
-class VideoPlayerDisplay(display: JComponent, controls: JComponent, width: Int, height: Int) extends JPanel {
+class VideoPlayerDisplay(display: JComponent, controls: JComponent,
+                         width: Int, height: Int) extends JPanel {
   setLayout(new BorderLayout)
   add(display, BorderLayout.CENTER)
   //add(new JLabel("Video Player"), BorderLayout.CENTER)

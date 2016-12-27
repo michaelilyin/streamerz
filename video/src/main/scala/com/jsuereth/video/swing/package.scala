@@ -6,12 +6,13 @@ import java.util.Optional
 import javax.swing.{JComponent, JFrame}
 
 import akka.actor.{ActorRef, ActorSystem}
-import akka.stream.scaladsl.Flow
+import akka.stream.actor.ActorPublisher
+import akka.stream.scaladsl.{Flow, Source}
 import org.reactivestreams.{Publisher, Subscriber}
 
 /**
- * Helpers for creating swing components.
- */
+  * Helpers for creating swing components.
+  */
 package object swing {
 
   /** Creates a new JFrame where we can dump a VideoFrame stream and it will render in realtime. */
@@ -36,16 +37,23 @@ package object swing {
     consumer -> producer
   }
 
+  def createFiltersComponent(system: ActorSystem, width: Int = 480, height: Int = 640): Publisher[UIControl] = {
+    val (filtersProducer, filtersControl) = swing.FiltersControls(system)
+    inFrame("Filters control", filtersControl, system, width, height)
+    filtersProducer
+  }
+
   /** Creates a video player that can play/pause a single stream of video. */
   def createVideoPlayer(system: ActorSystem,
                         openFile: () => Publisher[VideoFrame],
                         width: Int = 640, height: Int = 480
-                       )(implicit filters: Flow[VideoFrame, VideoFrame, Unit]*): Unit = {
+                       )(filters: Flow[VideoFrame, VideoFrame, Unit]*): Unit = {
     val (videoSink, uiSource) = createRawVideoPlayer(system, width, height)
     val (uiSink, videoSource) = PlayerProcessor.create(system, openFile)
-    uiSource.subscribe(uiSink)
-    val filterChain = FilterChain(system, videoSource, videoSink)(filters:_*)
-    filterChain.run()
+    val filtersSource = createFiltersComponent(system, height, width)
+    filtersSource subscribe uiSink
+    uiSource subscribe uiSink
+    videoSource subscribe videoSink
   }
 
 

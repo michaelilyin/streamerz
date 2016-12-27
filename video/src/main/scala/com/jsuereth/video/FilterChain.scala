@@ -9,26 +9,22 @@ import org.reactivestreams.{Publisher, Subscriber}
   * Created by michael on 18.12.16.
   */
 object FilterChain {
-  def apply(system: ActorSystem,
-            videoSource: Publisher[VideoFrame],
-            videoReceiver: Subscriber[VideoFrame])
-           (implicit filters: Filter*): FilterChain = {
-    new FilterChain(system, videoSource, videoReceiver, filters:_*)
+  def apply(filters: Filter*): FilterChain = {
+    new FilterChain(filters:_*)
   }
 }
 
-class FilterChain(system: ActorSystem,
-                  videoSource: Publisher[VideoFrame],
-                  videoReceiver: Subscriber[VideoFrame],
-                  filters: Filter*) {
+class FilterChain(filters: Filter*) {
 
-  private implicit val factory = system
-  private implicit val materializer = ActorMaterializer(ActorMaterializerSettings create factory)
-
-  def run(): Unit = {
+  def run(system: ActorSystem)
+         (videoSource: Publisher[VideoFrame],
+          videoReceiver: Subscriber[VideoFrame]): Unit = {
     if (filters.isEmpty) {
       videoSource subscribe videoReceiver
     } else {
+      implicit val factory = system
+      implicit val materializer = ActorMaterializer(ActorMaterializerSettings create factory)
+
       val filter = filters.reverse reduce { (result, filter) => filter via result }
       val sink = Sink(videoReceiver)
       val source = Source(videoSource)

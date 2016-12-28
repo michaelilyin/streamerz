@@ -7,6 +7,8 @@ object RGBVector {
     new RGBVector((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, (rgb >> 0) & 0xFF)
 	
   def black: RGBVector = new RGBVector(0, 0, 0)
+  
+  def white: RGBVector = new RGBVector(255, 255, 255)
 }
 
 class RGBVector(val red: Integer, val green: Integer, val blue: Integer) {

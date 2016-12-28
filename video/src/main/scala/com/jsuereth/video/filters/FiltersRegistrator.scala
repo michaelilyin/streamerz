@@ -30,6 +30,9 @@ object FiltersRegistrator {
 	FiltersRegistry.register("foreground-removal-filter", "Foreground removal filter",
       "Removes moving objects & leaves only static background", ForegroundFilters.foregroundRemoval)
 	  
+	FiltersRegistry.register("foreground-mask-filter", "Foreground mask filter",
+      "Shows black & white foreground mask", ForegroundFilters.foregroundMask)
+	  
 	FiltersRegistry.register("background-modelling-long-term-filter", "Background modelling filter (long-term)",
       "Shows static background model calculated from frame history", ForegroundFilters.backgroundModellingLongTerm)
 	  

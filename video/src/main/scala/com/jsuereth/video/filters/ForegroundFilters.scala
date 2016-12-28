@@ -15,6 +15,8 @@ object ForegroundFilters {
   val backgroundModellingLongTerm = filter((isFG, value, longTermValue, shortTermValue) => longTermValue)
   
   val backgroundModellingShortTerm = filter((isFG, value, longTermValue, shortTermValue) => shortTermValue)
+  
+  val foregroundMask = filter((isFG, value, longTermValue, shortTermValue) => if (isFG) RGBVector.white else RGBVector.black)
 
   def filter(applyFunc: (Boolean, RGBVector, RGBVector, RGBVector) => RGBVector): Filter = {
     val filterInstance = new ForegroundFilter(applyFunc)

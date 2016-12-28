@@ -5,6 +5,8 @@ import scala.math._
 object RGBVector {
   def fromRGB(rgb: Integer): RGBVector = 
     new RGBVector((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, (rgb >> 0) & 0xFF)
+	
+  def black: RGBVector = new RGBVector(0, 0, 0)
 }
 
 class RGBVector(val red: Integer, val green: Integer, val blue: Integer) {
@@ -21,4 +23,7 @@ class RGBVector(val red: Integer, val green: Integer, val blue: Integer) {
 	
   def *(that: Float): RGBVector =
     new RGBVector((that * this.red).toInt, round(that * this.green).toInt, round(that * this.blue).toInt)
+	
+  def toRGB: Integer =
+    red << 16 | green << 8 | blue << 0
 }

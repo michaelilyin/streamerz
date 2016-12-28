@@ -4,7 +4,7 @@ import akka.actor.ActorSystem
 import akka.stream.ActorMaterializerSettings
 import akka.stream.scaladsl.{Sink, Source}
 import com.jsuereth.video.AsciiToVideo.asciiToVideo
-import com.jsuereth.video.filters.{FiltersRegistrator, BackgroundRemovalFilter}
+import com.jsuereth.video.filters.FiltersRegistrator
 import com.jsuereth.video.swing
 
 object BackgroundRemoval {

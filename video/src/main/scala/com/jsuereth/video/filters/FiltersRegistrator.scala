@@ -25,6 +25,15 @@ object FiltersRegistrator {
       "Represents image in ascii greyscale colors", AsciiVideo.greyscaleAscii)
 	  
 	FiltersRegistry.register("background-removal-filter", "Background removal filter",
-      "Removes static background & leaves only moving objects", BackgroundRemovalFilter.filter)
+      "Removes static background & leaves only moving objects", ForegroundFilters.backgroundRemoval)
+	  
+	FiltersRegistry.register("foreground-removal-filter", "Foreground removal filter",
+      "Removes moving objects & leaves only static background", ForegroundFilters.foregroundRemoval)
+	  
+	FiltersRegistry.register("background-modelling-long-term-filter", "Background modelling filter (long-term)",
+      "Shows static background model calculated from frame history", ForegroundFilters.backgroundModellingLongTerm)
+	  
+	FiltersRegistry.register("background-modelling-short-term-filter", "Background modelling filter (short-term)",
+      "Shows static background model calculated from frame history", ForegroundFilters.backgroundModellingShortTerm)
   }
 }

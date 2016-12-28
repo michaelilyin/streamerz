@@ -6,16 +6,28 @@ import akka.stream.scaladsl.Flow
 import com.jsuereth.image.RGBVector
 import com.jsuereth.video._
 
-object BackgroundRemovalFilter {
+object ForegroundFilters {
 
-  val filter: Filter = {
-    val filterInstance = new BackgroundRemovalFilter
+  val backgroundRemoval = filter((isFG, value, longTermValue, shortTermValue) => if (isFG) value else RGBVector.black)
+  
+  val foregroundRemoval = filter((isFG, value, longTermValue, shortTermValue) => if (!isFG) value else RGBVector.black)
+  
+  val backgroundModellingLongTerm = filter((isFG, value, longTermValue, shortTermValue) => longTermValue)
+  
+  val backgroundModellingShortTerm = filter((isFG, value, longTermValue, shortTermValue) => shortTermValue)
+
+  def filter(applyFunc: (Boolean, RGBVector, RGBVector, RGBVector) => RGBVector): Filter = {
+    val filterInstance = new ForegroundFilter(applyFunc)
     Flow[VideoFrame].map(frame => VideoFrame(filterInstance.frameReceived(frame.image), frame.timeStamp, frame.timeUnit))
   }
   
 }
 
-class BackgroundRemovalFilter(val learningRateShort: Float = 0.4f, val thresholdBottom: Integer = 12, val hoodRadius: Integer = 2) {
+class ForegroundFilter(applyFunc: (Boolean, RGBVector, RGBVector, RGBVector) => RGBVector, 
+	val learningRateShort: Float = 0.4f, 
+	val thresholdBottom: Integer = 12, 
+	val hoodRadius: Integer = 2) {
+	
   require(learningRateShort > 0.0f && learningRateShort < 1.0f, "learning rate must be between 0.0 and 1.0")
   require(thresholdBottom > 0, "bottom threshold must be positive")
   
@@ -72,12 +84,11 @@ class BackgroundRemovalFilter(val learningRateShort: Float = 0.4f, val threshold
 	  var x = 0
 	  for(x <- 0 until image.getWidth) {
 	    val color = RGBVector.fromRGB(image.getRGB(x,y))
-	    val alpha = (1 - (if (mask(x)(y)) 1 else 0)) * learningRateLong
 		
 	    mask(x)(y) = shortTermCheck(x, y, color) & longTermCheck(x, y, color)
-	    if (!mask(x)(y))
-		  image.setRGB(x,y,0)
+		image.setRGB(x, y, applyFunc(mask(x)(y), color, longTermModel(x)(y), shortTermModel(x)(y)).toRGB)
 		  
+		val alpha = (1 - (if (mask(x)(y)) 1 else 0)) * learningRateLong
 		updateModel(longTermModel, color, x, y, alpha)
 		updateModel(shortTermModel, color, x, y, learningRateShort)
 	  }

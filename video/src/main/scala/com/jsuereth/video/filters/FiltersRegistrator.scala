@@ -23,5 +23,8 @@ object FiltersRegistrator {
 
     FiltersRegistry.register("greyscale-ascii", "Ascii greyscale",
       "Represents image in ascii greyscale colors", AsciiVideo.greyscaleAscii)
+	  
+	FiltersRegistry.register("background-removal-filter", "Background removal filter",
+      "Removes static background & leaves only moving objects", BackgroundRemovalFilter.filter)
   }
 }

@@ -63,14 +63,14 @@ object AsciiToVideo {
 
     picture
   }
-
+//27.toChar + "\\["12,213,12msadsada
   private def getDimensions(lines: Array[String]): (Int, Int) = {
     val firstLine = lines(0) split colorGroupStartPattern
     val firstLineChars = firstLine map {
       group => {
         group dropWhile (_ != 'm') drop 1
       }
-    } flatMap (_.toCharArray)
+    } flatMap (_.toCharArray) //count
 
     (lines.length, firstLineChars.length)
   }

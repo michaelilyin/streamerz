@@ -25,7 +25,7 @@ object ForegroundFilters {
   
 }
 
-class ForegroundFilter(applyFunc: (Boolean, RGBVector, RGBVector, RGBVector) => RGBVector, 
+class  ForegroundFilter(applyFunc: (Boolean, RGBVector, RGBVector, RGBVector) => RGBVector,
 	val learningRateShort: Float = 0.4f, 
 	val thresholdBottom: Integer = 12, 
 	val hoodRadius: Integer = 2) {

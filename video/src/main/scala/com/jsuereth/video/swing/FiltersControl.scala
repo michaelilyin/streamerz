@@ -45,8 +45,11 @@ private[swing] class FiltersControls(actor: ActorRef) extends JPanel {
   }
 
   clearButton addActionListener new ActionListener() {
-    override def actionPerformed(e: ActionEvent): Unit =
+    override def actionPerformed(e: ActionEvent): Unit = {
+      selector.sourceListModel ++= selector.destListModel
+      selector.destListModel.clear()
       actor ! ClearFiltersClicked
+    }
   }
 
 }
@@ -152,13 +155,13 @@ class DualListBox(var sourceListModel: mutable.ListBuffer[FilterMeta],
 
   private def clearSourceSelected() {
     val selected = sourceList.getSelectedValuesList
-    sourceListModel --= selected
+    sourceListModel = sourceListModel --= selected
     sourceList.getSelectionModel.clearSelection()
   }
 
   private def clearDestinationSelected() {
     val selected = destList.getSelectedValuesList
-    destListModel --= selected
+    destListModel = destListModel --= selected
     destList.getSelectionModel.clearSelection()
   }
 

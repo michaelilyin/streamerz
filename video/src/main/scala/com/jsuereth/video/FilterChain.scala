@@ -25,7 +25,9 @@ class FilterChain(filters: Filter*) {
       implicit val factory = system
       implicit val materializer = ActorMaterializer(ActorMaterializerSettings create factory)
 
-      val filter = filters.reverse reduce { (result, filter) => filter via result }
+      val filter = filters.reverse reduce {
+        (result, filter) => filter via result
+      }
       val sink = Sink(videoReceiver)
       val source = Source(videoSource)
       filter to sink runWith source

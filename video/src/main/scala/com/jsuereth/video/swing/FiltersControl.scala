@@ -1,8 +1,9 @@
 package com.jsuereth.video.swing
 
 import java.awt.event.{ActionEvent, ActionListener}
-import java.awt.{BorderLayout, Dimension, GridLayout}
+import java.awt.{BorderLayout, Component, Dimension, GridLayout}
 import java.util
+import java.util.Comparator
 import javax.swing._
 
 import akka.actor.{ActorRef, ActorRefFactory, ActorSystem, Props}
@@ -26,7 +27,7 @@ private[swing] class FiltersControls(actor: ActorRef) extends JPanel {
   private val applyButton = new JButton("Apply")
   private val clearButton = new JButton("Clear")
 
-  private val selector = new DualListBox(ListBuffer(FiltersRegistry():_*))
+  private val selector = new DualListBox(FiltersRegistry().toList)
 
   this setPreferredSize new Dimension(640, 100)
   this setMinimumSize new Dimension(640, 100)
@@ -41,13 +42,12 @@ private[swing] class FiltersControls(actor: ActorRef) extends JPanel {
 
   applyButton addActionListener new ActionListener() {
     override def actionPerformed(e: ActionEvent): Unit =
-      actor ! ApplyFiltersClicked(selector.destListModel.map(meta => FiltersRegistry(meta.key)))
+      actor ! ApplyFiltersClicked(selector.selected.map(meta => FiltersRegistry(meta.key)))
   }
 
   clearButton addActionListener new ActionListener() {
     override def actionPerformed(e: ActionEvent): Unit = {
-      selector.sourceListModel ++= selector.destListModel
-      selector.destListModel.clear()
+      selector.clear()
       actor ! ClearFiltersClicked
     }
   }
@@ -94,112 +94,75 @@ object FiltersControls {
 
 import scala.collection.JavaConversions._
 
-class DualListBox(var sourceListModel: mutable.ListBuffer[FilterMeta],
-                  var destListModel: mutable.ListBuffer[FilterMeta] = new ListBuffer[FilterMeta])
-  extends JPanel {
+class DualListBox(var elements: List[FilterMeta]) extends JPanel {
+  private val sourceModel = new java.util.Vector[FilterMeta]()
+  private val destinationModel = new java.util.Vector[FilterMeta]()
 
-  private var sourceList: JList[FilterMeta] = _
+  private val sourceList: JList[FilterMeta] = new JList(sourceModel)
+  private val destinationList: JList[FilterMeta] = new JList(destinationModel)
 
-  private var destList: JList[FilterMeta] = _
+  private val addButton = new JButton(">>")
+  private val removeButton = new JButton("<<")
 
-  private var addButton: JButton = _
-
-  private var removeButton: JButton = _
+  def selected: List[FilterMeta] = destinationModel.toList
 
   initScreen()
+  initData()
 
-  def clearSourceListModel() {
-    sourceListModel.clear()
+  def clear(): Unit = {
+    initData()
+    sourceList.updateUI()
+    destinationList.updateUI()
   }
 
-  def clearDestinationListModel() {
-    destListModel.clear()
-  }
-
-  def addSourceElements(newValue: ListModel[FilterMeta]) {
-    fillListModel(sourceListModel, newValue)
-  }
-
-  def setSourceElements(newValue: ListModel[FilterMeta]) {
-    clearSourceListModel()
-    addSourceElements(newValue)
-  }
-
-  def addDestinationElements(newValue: ListModel[FilterMeta]) {
-    fillListModel(destListModel, newValue)
-  }
-
-  private def fillListModel(model: ListBuffer[FilterMeta], newValues: ListModel[FilterMeta]) {
-    val size = newValues.getSize
-    for (i <- 0 until size) {
-      model.add(newValues.getElementAt(i))
-    }
-  }
-
-  def addSourceElements(newValue: Array[FilterMeta]) {
-    fillListModel(sourceListModel, newValue)
-  }
-
-  def setSourceElements(newValue: Array[FilterMeta]) {
-    clearSourceListModel()
-    addSourceElements(newValue)
-  }
-
-  def addDestinationElements(newValue: Array[FilterMeta]) {
-    fillListModel(destListModel, newValue)
-  }
-
-  private def fillListModel(model: ListBuffer[FilterMeta], newValues: Array[FilterMeta]) {
-    model ++= newValues
-  }
-
-  private def clearSourceSelected() {
-    val selected = sourceList.getSelectedValuesList
-    sourceListModel = sourceListModel --= selected
-    sourceList.getSelectionModel.clearSelection()
-  }
-
-  private def clearDestinationSelected() {
-    val selected = destList.getSelectedValuesList
-    destListModel = destListModel --= selected
-    destList.getSelectionModel.clearSelection()
+  private def initData() = {
+    sourceModel.addAll(elements.sortBy(_.name))
+    destinationModel.clear()
   }
 
   private def initScreen() {
     setLayout(new GridLayout(0, 2))
-    sourceList = new JList(sourceListModel.toArray)
-    addButton = new JButton(">>")
     addButton.addActionListener(new AddListener())
-    removeButton = new JButton("<<")
     removeButton.addActionListener(new RemoveListener())
-    destList = new JList(destListModel.toArray)
+
+    sourceList.setCellRenderer(new CellRenderer())
+    destinationList.setCellRenderer(new CellRenderer())
+
     val leftPanel = new JPanel(new BorderLayout())
     leftPanel.add(new JLabel("Available Elements:"), BorderLayout.NORTH)
     leftPanel.add(new JScrollPane(sourceList), BorderLayout.CENTER)
     leftPanel.add(addButton, BorderLayout.SOUTH)
+
     val rightPanel = new JPanel(new BorderLayout())
     rightPanel.add(new JLabel("Selected Elements:"), BorderLayout.NORTH)
-    rightPanel.add(new JScrollPane(destList), BorderLayout.CENTER)
+    rightPanel.add(new JScrollPane(destinationList), BorderLayout.CENTER)
     rightPanel.add(removeButton, BorderLayout.SOUTH)
+
     add(leftPanel)
     add(rightPanel)
   }
 
   private class AddListener extends ActionListener {
-
     def actionPerformed(e: ActionEvent) {
       val selected = sourceList.getSelectedValuesList
-      addDestinationElements(selected.toList.toArray)
-      clearSourceSelected()
+      destinationModel addAll selected
+      sourceModel removeAll selected
+      sourceList.getSelectionModel.clearSelection()
+      sourceList.updateUI()
+      destinationList.updateUI()
     }
   }
-
   private class RemoveListener extends ActionListener {
-
     def actionPerformed(e: ActionEvent) {
-      val selected = destList.getSelectedValuesList
-      addSourceElements(selected.toList.toArray)
-      clearDestinationSelected()
+      val selected = destinationList.getSelectedValuesList
+      sourceModel addAll selected
+      sourceModel.sort(new Comparator[FilterMeta]() {
+        override def compare(o1: FilterMeta, o2: FilterMeta): Int = o1.name.compareTo(o2.name)
+      })
+      destinationModel removeAll selected
+      destinationList.getSelectionModel.clearSelection()
+      destinationList.updateUI()
+      sourceList.updateUI()
     }
   }
 

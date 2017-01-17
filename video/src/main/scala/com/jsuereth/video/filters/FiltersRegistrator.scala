@@ -6,6 +6,7 @@ import com.jsuereth.video.AsciiVideo
   * Created by michael on 27.12.16.
   */
 object FiltersRegistrator {
+
   import com.jsuereth.video.AsciiToVideo.asciiToVideo
 
   def apply(): Unit = {
@@ -23,20 +24,23 @@ object FiltersRegistrator {
 
     FiltersRegistry.register("greyscale-ascii", "Ascii greyscale",
       "Represents image in ascii greyscale colors", AsciiVideo.greyscaleAscii)
-	  
-	FiltersRegistry.register("background-removal-filter", "Background removal filter",
+
+    FiltersRegistry.register("background-removal-filter", "Background removal filter",
       "Removes static background & leaves only moving objects", ForegroundFilters.backgroundRemoval)
-	  
-	FiltersRegistry.register("foreground-removal-filter", "Foreground removal filter",
+
+    FiltersRegistry.register("foreground-removal-filter", "Foreground removal filter",
       "Removes moving objects & leaves only static background", ForegroundFilters.foregroundRemoval)
-	  
-	FiltersRegistry.register("foreground-mask-filter", "Foreground mask filter",
+
+    FiltersRegistry.register("foreground-mask-filter", "Foreground mask filter",
       "Shows black & white foreground mask", ForegroundFilters.foregroundMask)
-	  
-	FiltersRegistry.register("background-modelling-long-term-filter", "Background modelling filter (long-term)",
+
+    FiltersRegistry.register("background-modelling-long-term-filter", "Background modelling filter (long-term)",
       "Shows static background model calculated from frame history", ForegroundFilters.backgroundModellingLongTerm)
-	  
-	FiltersRegistry.register("background-modelling-short-term-filter", "Background modelling filter (short-term)",
+
+    FiltersRegistry.register("background-modelling-short-term-filter", "Background modelling filter (short-term)",
       "Shows static background model calculated from frame history", ForegroundFilters.backgroundModellingShortTerm)
+
+    FiltersRegistry.register("edge-detection-filter", "Image edge detection",
+      "Detect edges of objects on image", EdgeDetectionFilter.filter)
   }
 }
